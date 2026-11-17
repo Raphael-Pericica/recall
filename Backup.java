@@ -19,8 +19,8 @@ public class Backup {
     //contents of backed up files are kept as a hash
     static final Path OBJECTS_FOLDER = Path.of("backup_store", "objects");
 
-    // NEW (Phase 2): each backup run writes one snapshot file here,
-    // listing every file name and the hash of its contents at that moment
+    //each backup run writes one snapshot file here
+    //listing every file name and the hash of its contents at that moment
     static final Path SNAPSHOTS_FOLDER = Path.of("backup_store", "snapshots");
 
     //same method as demo
@@ -31,7 +31,7 @@ public class Backup {
         return HexFormat.of().formatHex(hashBytes);
     }
 
-    // NEW (Phase 3): writes a compressed copy of a file into the store
+    //writes a compressed copy of the file into the store
     static void storeCompressed(Path source, Path destination) throws Exception {
         byte[] contents = Files.readAllBytes(source);
         try (GZIPOutputStream gzip = new GZIPOutputStream(new FileOutputStream(destination.toFile()))) {
@@ -54,7 +54,7 @@ public class Backup {
         int storedCount = 0;
         int skippedCount = 0;
 
-        // NEW (Phase 2): one line per file, e.g. "a.txt<TAB>b94d27..."
+        //one line per file e.g. "a.txt<TAB>b94d27..."
         List<String> snapshotLines = new ArrayList<>();
 
         for (File file : files) {
@@ -65,7 +65,7 @@ public class Backup {
             String fileHash = hashFile(file.toPath());
             Path storedCopy = OBJECTS_FOLDER.resolve(fileHash);
 
-            // NEW (Phase 2): record this file in the snapshot, stored or skipped
+            //record this file in the snapshot stored or skipped
             snapshotLines.add(file.getName() + "\t" + fileHash);
 
             if (Files.exists(storedCopy)) {
@@ -73,7 +73,8 @@ public class Backup {
                 skippedCount++;
             } else {
                 storeCompressed(file.toPath(), storedCopy);
-                storedCopy.toFile().setReadOnly();   // NEW (Phase 3): lock the object
+                storedCopy.toFile().setReadOnly();  //lock it so it cant be changed
+                //show size before and after compression
                 long originalSize = file.length();
                 long storedSize = Files.size(storedCopy);
                 System.out.println("STORE  " + file.getName() + "  -> objects/" + fileHash.substring(0, 12)
@@ -82,12 +83,12 @@ public class Backup {
             }
         }
 
-        // NEW (Phase 2): save the snapshot, named by date and time
-        // (dashes instead of colons, because Windows doesn't allow ':' in file names)
+        //save the snapshot named by date and time
+        //dashes instead of colons because windows doesnt allow ':' in file names
         String snapshotName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
         Path snapshotFile = SNAPSHOTS_FOLDER.resolve(snapshotName + ".txt");
         Files.write(snapshotFile, snapshotLines);
-        snapshotFile.toFile().setReadOnly();   // NEW (Phase 3): lock the snapshot too
+        snapshotFile.toFile().setReadOnly();  //lock the snapshot too
 
         System.out.println();
         System.out.println("Backup finished: " + storedCount + " stored, " + skippedCount + " skipped.");

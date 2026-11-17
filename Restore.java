@@ -2,7 +2,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -11,15 +10,15 @@ import java.util.zip.GZIPInputStream;
 
 public class Restore {
 
-    // Same store folders that Backup.java writes to
+    //same store folders that Backup.java writes to
     static final Path OBJECTS_FOLDER = Path.of("backup_store", "objects");
     static final Path SNAPSHOTS_FOLDER = Path.of("backup_store", "snapshots");
 
-    // Restored files go into a NEW folder, so we never overwrite the originals
+    //restored files go into a new folder so we never overwrite the originals
     static final Path RESTORE_FOLDER = Path.of("restored");
 
-    // Same hashing method again. Three copies now (HashDemo, Backup, Restore):
-    // we'll move it into one shared class in a later phase.
+    //same hashing method again three copies now hashDemo backup restore)
+    //well move it into one shared class in a later phase
     static String hashFile(Path file) throws Exception {
         byte[] contents = Files.readAllBytes(file);
         MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -27,7 +26,7 @@ public class Restore {
         return HexFormat.of().formatHex(hashBytes);
     }
 
-    // NEW (Phase 3): reads a compressed object and writes the original file back out
+    //reads a compressed object and writes the original file back out
     static void restoreDecompressed(Path storedCopy, Path destination) throws Exception {
         try (GZIPInputStream gzip = new GZIPInputStream(new FileInputStream(storedCopy.toFile()))) {
             byte[] contents = gzip.readAllBytes();
@@ -35,7 +34,7 @@ public class Restore {
         }
     }
 
-    // Prints every snapshot that exists, oldest first
+    //prints every snapshot that exists oldest first
     static void listSnapshots() {
         File[] snapshotFiles = SNAPSHOTS_FOLDER.toFile().listFiles();
         if (snapshotFiles == null || snapshotFiles.length == 0) {
@@ -54,7 +53,7 @@ public class Restore {
     }
 
     public static void main(String[] args) throws Exception {
-        // No snapshot name given? Just show the list and stop.
+        //no snapshot name given just show the list and stop
         if (args.length == 0) {
             listSnapshots();
             return;
@@ -70,11 +69,11 @@ public class Restore {
             return;
         }
 
-        // e.g. restored/2026-09-29_14-30-05/
+        //e.g. restored/2026-09-29_14-30-05/
         Path targetFolder = RESTORE_FOLDER.resolve(snapshotName);
         Files.createDirectories(targetFolder);
 
-        // Each line looks like: "a.txt<TAB>b94d27..."
+        //each line looks like "a.txt<TAB>b94d27..."
         List<String> snapshotLines = Files.readAllLines(snapshotFile);
 
         int restoredCount = 0;
@@ -88,14 +87,14 @@ public class Restore {
             Path storedCopy = OBJECTS_FOLDER.resolve(expectedHash);
             Path restoredFile = targetFolder.resolve(fileName);
 
-            // The snapshot points at content that isn't in the store
+            //the snapshot points at content that isnt in the store
             if (!Files.exists(storedCopy)) {
                 System.out.println("MISSING    " + fileName + "  (no object " + expectedHash.substring(0, 12) + ")");
                 errorCount++;
                 continue;
             }
 
-            // NEW (Phase 3): decompress; a badly damaged object is reported, not a crash
+            //decompress it back if its too damaged report it and keep going
             try {
                 restoreDecompressed(storedCopy, restoredFile);
             } catch (Exception e) {
@@ -104,8 +103,8 @@ public class Restore {
                 continue;
             }
 
-            // Verify: hash the restored file and check it matches the snapshot.
-            // This is the "0 errors" part of the 3-2-1-1-0 rule.
+            //verify hash the restored file and check it matches the snapshot
+            //this is the "0 errors" part of the 3-2-1-1-0 rule
             String actualHash = hashFile(restoredFile);
             if (actualHash.equals(expectedHash)) {
                 System.out.println("OK         " + fileName);
